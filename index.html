@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moving Planner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 968px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .floor-plan {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .floor-plan h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        
+        .rooms-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 200px);
+            gap: 15px;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 10px;
+            position: relative;
+        }
+        
+        .room {
+            background: white;
+            border: 3px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            position: relative;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        
+        .room:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            border-color: #667eea;
+        }
+        
+        .room.selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #764ba2;
+        }
+        
+        .room.selected .room-title {
+            color: white;
+        }
+        
+        .room.selected .area-item {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .room-title {
+            font-weight: bold;
+            color: #4a5568;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .area-list {
+            font-size: 0.85em;
+            max-height: 140px;
+            overflow-y: auto;
+        }
+        
+        .area-item {
+            padding: 3px 0;
+            color: #718096;
+            display: flex;
+            align-items: center;
+        }
+        
+        .area-item::before {
+            content: "📦";
+            margin-right: 5px;
+        }
+        
+        .area-item.packed {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+        
+        .area-item.packed::before {
+            content: "✅";
+        }
+        
+        /* Room positioning */
+        .bedroom { grid-column: 1; grid-row: 1; }
+        .lauren-office { grid-column: 2; grid-row: 1; }
+        .living-room { grid-column: 3; grid-row: 1; }
+        .bathroom { grid-column: 1; grid-row: 2; }
+        .kitchen { grid-column: 2; grid-row: 2; }
+        .yarden-office { grid-column: 3; grid-row: 2; }
+        
+        .progress-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .progress-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e2e8f0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #718096;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .calendar {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .calendar h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        
+        .calendar-grid {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .day-card {
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 15px;
+            border-left: 5px solid #667eea;
+            transition: all 0.3s ease;
+        }
+        
+        .day-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .day-date {
+            font-weight: bold;
+            color: #4a5568;
+            font-size: 1.1em;
+        }
+        
+        .day-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+        
+        .day-tasks {
+            display: grid;
+            gap: 8px;
+        }
+        
+        .task-item {
+            background: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .task-item:hover {
+            background: #edf2f7;
+            transform: translateX(3px);
+        }
+        
+        .task-item::before {
+            content: "📦";
+            margin-right: 8px;
+        }
+        
+        .task-complete {
+            text-decoration: line-through;
+            opacity: 0.5;
+            background: #e6fffa;
+        }
+        
+        .task-complete::before {
+            content: "✅";
+        }
+        
+        .controls {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏠 Moving Planner & Schedule</h1>
+        
+        <div class="main-grid">
+            <div class="floor-plan">
+                <h2>Floor Plan Overview</h2>
+                <div class="rooms-container">
+                    <div class="room bedroom" onclick="toggleRoom(this)">
+                        <div class="room-title">Bedroom</div>
+                        <div class="area-list">
+                            <div class="area-item" onclick="toggleArea(event, this)">Bookshelf</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Dresser</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Wall area</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Closet</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Under Bed</div>
+                        </div>
+                    </div>
+                    
+                    <div class="room lauren-office" onclick="toggleRoom(this)">
+                        <div class="room-title">Lauren's Office</div>
+                        <div class="area-list">
+                            <div class="area-item" onclick="toggleArea(event, this)">Under desk</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Under Kitchen counter</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Divider</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Desk top</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Walls</div>
+                        </div>
+                    </div>
+                    
+                    <div class="room living-room" onclick="toggleRoom(this)">
+                        <div class="room-title">Living Room</div>
+                        <div class="area-list">
+                            <div class="area-item" onclick="toggleArea(event, this)">Bookshelves</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Middle table</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Behind couch</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Under table</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">In between shelves</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Walls</div>
+                        </div>
+                    </div>
+                    
+                    <div class="room bathroom" onclick="toggleRoom(this)">
+                        <div class="room-title">Bathroom</div>
+                        <div class="area-list">
+                            <div class="area-item" onclick="toggleArea(event, this)">Under cabinet</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Shower</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Storage containers</div>
+                        </div>
+                    </div>
+                    
+                    <div class="room kitchen" onclick="toggleRoom(this)">
+                        <div class="room-title">Kitchen</div>
+                        <div class="area-list">
+                            <div class="area-item" onclick="toggleArea(event, this)">Top of fridge</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Counter north side</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Counter east side</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Counter south side</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Cabinet north side</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Cabinet east side</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Cabinet south side</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Shoe closet area</div>
+                        </div>
+                    </div>
+                    
+                    <div class="room yarden-office" onclick="toggleRoom(this)">
+                        <div class="room-title">Yarden's Office</div>
+                        <div class="area-list">
+                            <div class="area-item" onclick="toggleArea(event, this)">Side shelf</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Back shelves</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Desk</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Side table</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Loveseat</div>
+                            <div class="area-item" onclick="toggleArea(event, this)">Closet</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="progress-section">
+                <h2>Progress Tracker</h2>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressBar">0%</div>
+                </div>
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalAreas">44</div>
+                        <div class="stat-label">Total Tasks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="packedAreas">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="remainingAreas">44</div>
+                        <div class="stat-label">Remaining</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="calendar">
+            <h2>📅 Moving Schedule - Starting September 5</h2>
+            <div class="calendar-grid">
+                <div class="day-card">
+                    <div class="day-header">
+                        <span class="day-date">Week Before Move</span>
+                        <span class="day-badge">Administrative Tasks</span>
+                    </div>
+                    <div class="day-tasks">
+                        <div class="task-item" onclick="toggleTask(this)">📋 Getting Moving company quotes</div>
+                        <div class="task-item" onclick="toggleTask(this)">📦 Getting boxes</div>
+                        <div class="task-item" onclick="toggleTask(this)">🏠 Get renters insurance</div>
+                        <div class="task-item" onclick="toggleTask(this)">📬 Change of address with USPS</div>
+                        <div class="task-item" onclick="toggleTask(this)">💳 Update bank/credit card addresses</div>
+                        <div class="task-item" onclick="toggleTask(this)">💼 Update employer HR records</div>
+                        <div class="task-item" onclick="toggleTask(this)">💊 Transfer prescriptions</div>
+                    </div>
+                </div>
+                
+                <div class="day-card">
+                    <div class="day-header">
+                        <span class="day-date">Sept 3-4</span>
+                        <span class="day-badge">Utilities & Home Prep</span>
+                    </div>
+                    <div class="day-tasks">
+                        <div class="task-item" onclick="toggleTask(this)">📞 Moving utilities</div>
+                        <div class="task-item" onclick="toggleTask(this)">🌐 Setting up internet</div>
+                        <div class="task-item" onclick="toggleTask(this)">🔨 Patch nail holes/touch-up paint</div>
+                        <div class="task-item" onclick="toggleTask(this)">❄️ Defrost and clean refrigerator</div>
+                        <div class="task-item" onclick="toggleTask(this)">🧹 Deep clean current home</div>
+                    </div>
+                </div>
+                <div class="day-card">
+                    <div class="day-header">
+                        <span class="day-date">Day 1 - Sept 5 (Thursday)</span>
+                        <span class="day-badge">Bedroom - Part 1</span>
+                    </div>
+                    <div class="day-tasks">
+                        <div class="task-item" onclick="toggleTask(this)">Bedroom: Bookshelf</div>
+                        <div class="task-item" onclick="toggleTask(this)">Bedroom: Dresser</div>
+                        <div class="task-item" onclick="toggleTask(this)">Bedroom: Wall area</div>
+                    </div>
+                </div>
+                
+                <div class="day-card">
+                    <div class="day-header">
+                        <span class="day-date">Day 2 - Sept 6 (Friday)</span>
+                        <span class="day-badge">Bedroom - Part 2</span>
+                    </div>
+                    <div class="day-tasks">
+                        <div class="task-item" onclick="toggleTask(this)">Bedroom: Closet</div>
+                        <div class="task-item" onclick="toggleTask(this)">Bedroom: Under Bed</div>
+                    </div>
+                </div>
+                
+                <div class="day-card">
+                    <div class="day-header">
+                        <span class="day-date">Day 3 - Sept 7 (Saturday)</span>
+                        <span class="day-badge">Lauren's Office - Part 1</span>
+                    </div>
+                    <div class="day-tasks">
+                        <div class="task-item" onclick="toggleTask(this)">Lauren's Office: Under desk</div>
+                        <div class="task-item" onclick="toggleTask(this)">Lauren's Office: Under Kitchen counter</div>
+                        <div class="task-item" onclick="toggleTask(this)">Lauren's Office: Divider</div>
+                    </div>
+                </div>
+                
+                <div class="day-card">
+                    <div class="day-header">
+                        <span class="day-date">Day 4 - Sept 8 (Sunday)</span>
+                        <span class="day-badge">Lauren's Office - Part 2</span>
+                    </div>
+                    <div class="day-tasks">
+                        <div class="task-item" onclick="toggleTask(this)">Lauren's Office: Desk top</div>
+                        <div class="task-item" onclick="toggleTask(this)">Lauren's Office: Walls</div>
+                    </div>
+                </div>
+                
+                <div class="day-card">
+                    <div class="day-header">
+                        <span class="day-date">Day 5 - Sept 9 (Monday)</span>
+                        <span class="day-badge">Living Room - Part 1</span>
+                    </div>
+                    <div class="day-tasks">
+                        <div class="task-item" onclick="toggleTask(this)">Living Room: Bookshelves</div>
+                        <div class="task-item" onclick="toggleTask(this)">Living Room: Middle table</div>
+                        <div class="task-item" onclick="toggleTask(this)">Living Room: Behind couch</div>
+                    </div>
+                </div>
+                
+                <div class="day-card">
+                    <div class="day-header">
+                        <span class="day-date">Day 6 - Sept 10 (Tuesday)</span>
+                        <span class="day-badge">Living Room - Part 2</span>
+                    </div>
+                    <div class="day-tasks">
+                        <div class="task-item" onclick="toggleTask(this)">Living Room: Under table</div>
+                        <div class="task-item" onclick="toggleTask(this)">Living Room: In between shelves</div>
+                        <div class="task-item" onclick="toggleTask(this)">Living Room: Walls</div>
+                    </div>
+                </div>
+                
+                <div class="day-card">
+                    <div class="day-header">
+                        <span class="day-date">Day 7 - Sept 11 (Wednesday)</span>
+                        <span class="day-badge">Bathroom - Part 1</span>
+                    </div>
+                    <div class="day-tasks">
+                        <div class="task-item" onclick="toggleTask(this)">Bathroom: Under cabinet</div>
+                        <div class="task-item" onclick="toggleTask(this)">Bathroom: Shower</div>
+                    </div>
+                </div>
+                
+                <div class="day-card">
+                    <div class="day-header">
+                        <span class="day-date">Day 8 - Sept 12 (Thursday)</span>
+                        <span class="day-badge">Bathroom - Part 2</span>
+                    </div>
+                    <div class="day-tasks">
+                        <div class="task-item" onclick="toggleTask(this)">Bathroom: Storage containers</div>
+                    </div>
+                </div>
+                
+                <div class="day-card">
+                    <div class="day-header">
+                        <span class="day-date">Day 9 - Sept 13 (Friday)</span>
+                        <span class="day-badge">Kitchen - Part 1</span>
+                    </div>
+                    <div class="day-tasks">
+                        <div class="task-item" onclick="toggleTask(this)">Kitchen: Top of fridge</div>
+                        <div class="task-item" onclick="toggleTask(this)">Kitchen: Counter north side</div>
+                        <div class="task-item" onclick="toggleTask(this)">Kitchen: Counter east side</div>
+                        <div class="task-item" onclick="toggleTask(this)">Kitchen: Counter south side</div>
+                    </div>
+                </div>
+                
+                <div class="day-card">
+                    <div class="day-header">
+                        <span class="day-date">Day 10 - Sept 14 (Saturday)</span>
+                        <span class="day-badge">Kitchen - Part 2</span>
+                    </div>
+                    <div class="day-tasks">
+                        <div class="task-item" onclick="toggleTask(this)">Kitchen: Cabinet north side</div>
+                        <div class="task-item" onclick="toggleTask(this)">Kitchen: Cabinet east side</div>
+                        <div class="task-item" onclick="toggleTask(this)">Kitchen: Cabinet south side</div>
+                        <div class="task-item" onclick="toggleTask(this)">Kitchen: Shoe closet area</div>
+                    </div>
+                </div>
+                
+                <div class="day-card">
+                    <div class="day-header">
+                        <span class="day-date">Day 11 - Sept 15 (Sunday)</span>
+                        <span class="day-badge">Yarden's Office - Part 1</span>
+                    </div>
+                    <div class="day-tasks">
+                        <div class="task-item" onclick="toggleTask(this)">Yarden's Office: Side shelf</div>
+                        <div class="task-item" onclick="toggleTask(this)">Yarden's Office: Back shelves</div>
+                        <div class="task-item" onclick="toggleTask(this)">Yarden's Office: Desk</div>
+                    </div>
+                </div>
+                
+                <div class="day-card">
+                    <div class="day-header">
+                        <span class="day-date">Day 12 - Sept 16 (Monday)</span>
+                        <span class="day-badge">Yarden's Office - Part 2</span>
+                    </div>
+                    <div class="day-tasks">
+                        <div class="task-item" onclick="toggleTask(this)">Yarden's Office: Side table</div>
+                        <div class="task-item" onclick="toggleTask(this)">Yarden's Office: Loveseat</div>
+                        <div class="task-item" onclick="toggleTask(this)">Yarden's Office: Closet</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="resetAll()">🔄 Reset All</button>
+            <button class="btn" onclick="markAllComplete()">✅ Mark All Complete</button>
+        </div>
+    </div>
+    
+    <script>
+        let totalAreas = 44;
+        let packedCount = 0;
+        
+        function updateProgress() {
+            packedCount = document.querySelectorAll('.area-item.packed, .task-complete').length / 2;
+            const percentage = Math.round((packedCount / totalAreas) * 100);
+            
+            document.getElementById('progressBar').style.width = percentage + '%';
+            document.getElementById('progressBar').textContent = percentage + '%';
+            document.getElementById('packedAreas').textContent = packedCount;
+            document.getElementById('remainingAreas').textContent = totalAreas - packedCount;
+        }
+        
+        function toggleRoom(room) {
+            room.classList.toggle('selected');
+        }
+        
+        function toggleArea(event, area) {
+            event.stopPropagation();
+            area.classList.toggle('packed');
+            
+            // Find corresponding task in calendar
+            const areaText = area.textContent;
+            const tasks = document.querySelectorAll('.task-item');
+            tasks.forEach(task => {
+                if (task.textContent.includes(areaText)) {
+                    if (area.classList.contains('packed')) {
+                        task.classList.add('task-complete');
+                    } else {
+                        task.classList.remove('task-complete');
+                    }
+                }
+            });
+            
+            updateProgress();
+        }
+        
+        function toggleTask(task) {
+            task.classList.toggle('task-complete');
+            
+            // Find corresponding area in floor plan
+            const taskText = task.textContent;
+            const areaParts = taskText.split(': ');
+            if (areaParts.length === 2) {
+                const areaName = areaParts[1];
+                const areas = document.querySelectorAll('.area-item');
+                areas.forEach(area => {
+                    if (area.textContent === areaName) {
+                        if (task.classList.contains('task-complete')) {
+                            area.classList.add('packed');
+                        } else {
+                            area.classList.remove('packed');
+                        }
+                    }
+                });
+            }
+            
+            updateProgress();
+        }
+        
+        function resetAll() {
+            document.querySelectorAll('.area-item').forEach(item => {
+                item.classList.remove('packed');
+            });
+            document.querySelectorAll('.task-item').forEach(item => {
+                item.classList.remove('task-complete');
+            });
+            document.querySelectorAll('.room').forEach(room => {
+                room.classList.remove('selected');
+            });
+            updateProgress();
+        }
+        
+        function markAllComplete() {
+            document.querySelectorAll('.area-item').forEach(item => {
+                item.classList.add('packed');
+            });
+            document.querySelectorAll('.task-item').forEach(item => {
+                item.classList.add('task-complete');
+            });
+            updateProgress();
+        }
+        
+        // Initialize
+        updateProgress();
+    </script>
+</body>
+</html>
