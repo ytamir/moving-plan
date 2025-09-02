@@ -606,6 +606,87 @@
         let totalAreas = 44;
         let packedCount = 0;
         
+        // Load saved state from memory on page load
+        let savedState = {
+            packedAreas: [],
+            completedTasks: [],
+            selectedRooms: []
+        };
+        
+        function saveState() {
+            // Collect current state
+            const packedAreas = [];
+            document.querySelectorAll('.area-item.packed').forEach(item => {
+                const roomName = item.closest('.room').querySelector('.room-title').textContent;
+                packedAreas.push({
+                    room: roomName,
+                    area: item.textContent
+                });
+            });
+            
+            const completedTasks = [];
+            document.querySelectorAll('.task-item.task-complete').forEach(item => {
+                completedTasks.push(item.textContent);
+            });
+            
+            const selectedRooms = [];
+            document.querySelectorAll('.room.selected').forEach(room => {
+                selectedRooms.push(room.querySelector('.room-title').textContent);
+            });
+            
+            // Store in memory
+            savedState = {
+                packedAreas: packedAreas,
+                completedTasks: completedTasks,
+                selectedRooms: selectedRooms
+            };
+        }
+        
+        function loadState() {
+            // Restore packed areas
+            if (savedState.packedAreas) {
+                savedState.packedAreas.forEach(item => {
+                    const rooms = document.querySelectorAll('.room');
+                    rooms.forEach(room => {
+                        if (room.querySelector('.room-title').textContent === item.room) {
+                            const areas = room.querySelectorAll('.area-item');
+                            areas.forEach(area => {
+                                if (area.textContent === item.area) {
+                                    area.classList.add('packed');
+                                }
+                            });
+                        }
+                    });
+                });
+            }
+            
+            // Restore completed tasks
+            if (savedState.completedTasks) {
+                savedState.completedTasks.forEach(taskText => {
+                    const tasks = document.querySelectorAll('.task-item');
+                    tasks.forEach(task => {
+                        if (task.textContent === taskText) {
+                            task.classList.add('task-complete');
+                        }
+                    });
+                });
+            }
+            
+            // Restore selected rooms
+            if (savedState.selectedRooms) {
+                savedState.selectedRooms.forEach(roomTitle => {
+                    const rooms = document.querySelectorAll('.room');
+                    rooms.forEach(room => {
+                        if (room.querySelector('.room-title').textContent === roomTitle) {
+                            room.classList.add('selected');
+                        }
+                    });
+                });
+            }
+            
+            updateProgress();
+        }
+        
         function updateProgress() {
             packedCount = document.querySelectorAll('.area-item.packed, .task-complete').length / 2;
             const percentage = Math.round((packedCount / totalAreas) * 100);
@@ -614,10 +695,14 @@
             document.getElementById('progressBar').textContent = percentage + '%';
             document.getElementById('packedAreas').textContent = packedCount;
             document.getElementById('remainingAreas').textContent = totalAreas - packedCount;
+            
+            // Save state after each update
+            saveState();
         }
         
         function toggleRoom(room) {
             room.classList.toggle('selected');
+            saveState();
         }
         
         function toggleArea(event, area) {
@@ -673,6 +758,11 @@
             document.querySelectorAll('.room').forEach(room => {
                 room.classList.remove('selected');
             });
+            savedState = {
+                packedAreas: [],
+                completedTasks: [],
+                selectedRooms: []
+            };
             updateProgress();
         }
         
@@ -686,8 +776,15 @@
             updateProgress();
         }
         
-        // Initialize
-        updateProgress();
+        // Initialize - Load state when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadState();
+        });
+        
+        // Also initialize immediately in case DOMContentLoaded already fired
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            loadState();
+        }
     </script>
 </body>
 </html>
