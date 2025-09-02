@@ -606,12 +606,19 @@
         let totalAreas = 44;
         let packedCount = 0;
         
-        // Load saved state from memory on page load
-        let savedState = {
-            packedAreas: [],
-            completedTasks: [],
-            selectedRooms: []
-        };
+        // Check if localStorage is available
+        function isLocalStorageAvailable() {
+            try {
+                const test = '__localStorage_test__';
+                localStorage.setItem(test, test);
+                localStorage.removeItem(test);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        const storageAvailable = isLocalStorageAvailable();
         
         function saveState() {
             // Collect current state
@@ -634,57 +641,85 @@
                 selectedRooms.push(room.querySelector('.room-title').textContent);
             });
             
-            // Store in memory
-            savedState = {
+            const state = {
                 packedAreas: packedAreas,
                 completedTasks: completedTasks,
-                selectedRooms: selectedRooms
+                selectedRooms: selectedRooms,
+                savedDate: new Date().toISOString()
             };
+            
+            // Try to save to localStorage
+            if (storageAvailable) {
+                try {
+                    localStorage.setItem('movingPlannerState', JSON.stringify(state));
+                    console.log('State saved to localStorage');
+                } catch (e) {
+                    console.log('Could not save to localStorage:', e);
+                }
+            } else {
+                console.log('localStorage not available - running in restricted environment. Copy this code to run locally for persistent storage.');
+            }
         }
         
         function loadState() {
-            // Restore packed areas
-            if (savedState.packedAreas) {
-                savedState.packedAreas.forEach(item => {
-                    const rooms = document.querySelectorAll('.room');
-                    rooms.forEach(room => {
-                        if (room.querySelector('.room-title').textContent === item.room) {
-                            const areas = room.querySelectorAll('.area-item');
-                            areas.forEach(area => {
-                                if (area.textContent === item.area) {
-                                    area.classList.add('packed');
-                                }
-                            });
-                        }
-                    });
-                });
+            if (!storageAvailable) {
+                console.log('localStorage not available. To enable persistent storage, save this HTML file and open it directly in your browser.');
+                return;
             }
             
-            // Restore completed tasks
-            if (savedState.completedTasks) {
-                savedState.completedTasks.forEach(taskText => {
-                    const tasks = document.querySelectorAll('.task-item');
-                    tasks.forEach(task => {
-                        if (task.textContent === taskText) {
-                            task.classList.add('task-complete');
-                        }
+            try {
+                const savedState = localStorage.getItem('movingPlannerState');
+                if (!savedState) return;
+                
+                const state = JSON.parse(savedState);
+                console.log('Loading saved state from:', state.savedDate);
+                
+                // Restore packed areas
+                if (state.packedAreas) {
+                    state.packedAreas.forEach(item => {
+                        const rooms = document.querySelectorAll('.room');
+                        rooms.forEach(room => {
+                            if (room.querySelector('.room-title').textContent === item.room) {
+                                const areas = room.querySelectorAll('.area-item');
+                                areas.forEach(area => {
+                                    if (area.textContent === item.area) {
+                                        area.classList.add('packed');
+                                    }
+                                });
+                            }
+                        });
                     });
-                });
-            }
-            
-            // Restore selected rooms
-            if (savedState.selectedRooms) {
-                savedState.selectedRooms.forEach(roomTitle => {
-                    const rooms = document.querySelectorAll('.room');
-                    rooms.forEach(room => {
-                        if (room.querySelector('.room-title').textContent === roomTitle) {
-                            room.classList.add('selected');
-                        }
+                }
+                
+                // Restore completed tasks
+                if (state.completedTasks) {
+                    state.completedTasks.forEach(taskText => {
+                        const tasks = document.querySelectorAll('.task-item');
+                        tasks.forEach(task => {
+                            if (task.textContent === taskText) {
+                                task.classList.add('task-complete');
+                            }
+                        });
                     });
-                });
+                }
+                
+                // Restore selected rooms
+                if (state.selectedRooms) {
+                    state.selectedRooms.forEach(roomTitle => {
+                        const rooms = document.querySelectorAll('.room');
+                        rooms.forEach(room => {
+                            if (room.querySelector('.room-title').textContent === roomTitle) {
+                                room.classList.add('selected');
+                            }
+                        });
+                    });
+                }
+                
+                updateProgress();
+                console.log('State restored successfully');
+            } catch (e) {
+                console.log('Could not load saved state:', e);
             }
-            
-            updateProgress();
         }
         
         function updateProgress() {
@@ -749,21 +784,25 @@
         }
         
         function resetAll() {
-            document.querySelectorAll('.area-item').forEach(item => {
-                item.classList.remove('packed');
-            });
-            document.querySelectorAll('.task-item').forEach(item => {
-                item.classList.remove('task-complete');
-            });
-            document.querySelectorAll('.room').forEach(room => {
-                room.classList.remove('selected');
-            });
-            savedState = {
-                packedAreas: [],
-                completedTasks: [],
-                selectedRooms: []
-            };
-            updateProgress();
+            if (confirm('Are you sure you want to reset all progress? This will clear your saved data.')) {
+                document.querySelectorAll('.area-item').forEach(item => {
+                    item.classList.remove('packed');
+                });
+                document.querySelectorAll('.task-item').forEach(item => {
+                    item.classList.remove('task-complete');
+                });
+                document.querySelectorAll('.room').forEach(room => {
+                    room.classList.remove('selected');
+                });
+                
+                // Clear localStorage
+                if (storageAvailable) {
+                    localStorage.removeItem('movingPlannerState');
+                    console.log('Cleared saved state');
+                }
+                
+                updateProgress();
+            }
         }
         
         function markAllComplete() {
@@ -779,11 +818,19 @@
         // Initialize - Load state when page loads
         document.addEventListener('DOMContentLoaded', function() {
             loadState();
+            
+            // Show storage status
+            if (!storageAvailable) {
+                console.warn('⚠️ localStorage is not available in this environment.');
+                console.info('💡 To enable persistent storage: Save this HTML file (Ctrl+S) and open it directly in your browser.');
+            } else {
+                console.log('✅ localStorage is available - your progress will be saved automatically');
+            }
         });
         
         // Also initialize immediately in case DOMContentLoaded already fired
         if (document.readyState === 'complete' || document.readyState === 'interactive') {
-            loadState();
+            setTimeout(loadState, 100);
         }
     </script>
 </body>
